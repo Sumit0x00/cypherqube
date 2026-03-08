@@ -123,8 +123,13 @@ def analyze_target(target, port):
     # Run quantum risk analysis
     risks, score = analyze_quantum_risk(crypto_inventory)
 
-    # Print risk report
     print_risk_report(risks, score)
+
+    # Add risk results to report
+    crypto_inventory["quantum_risk"] = {
+        "risk_score": score,
+        "findings": risks
+    }
 
     return crypto_inventory
 
