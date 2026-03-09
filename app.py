@@ -2,6 +2,8 @@ import streamlit as st
 import json
 import pandas as pd
 from pdf_report import generate_pdf_report
+from PIL import Image
+
 # from scanner import analyze_target  # Uncomment when scanner module is available
 
 # ─── Mock scanner ─────────────────────────────────────────────────────────────
@@ -58,10 +60,11 @@ def analyze_target(target, port):
         }
     }
 # ──────────────────────────────────────────────────────────────────────────────
+favicon = Image.open("favicon.png")
 
 st.set_page_config(
-    page_title="CypherQube — TLS Scanner",
-    page_icon="🔐",
+    page_title="CypherQube",
+    page_icon=favicon,        
     layout="wide",
     initial_sidebar_state="collapsed"
 )
