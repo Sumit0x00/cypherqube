@@ -4,70 +4,20 @@ import pandas as pd
 from pdf_report import generate_pdf_report
 from PIL import Image
 
-# from scanner import analyze_target  # Uncomment when scanner module is available
+from scanner import analyze_target
 
-# ─── Mock scanner ─────────────────────────────────────────────────────────────
-def analyze_target(target, port):
-    return {
-        "target": f"{target}:{port}",
-        "port": port,
-        "tls_version": "TLSv1.3",
-        "cipher_suite": "TLS_AES_256_GCM_SHA384",
-        "key_exchange": "X25519",
-        "hash_function": "SHA256",
-        "tls_signature": "ECDSA",
-        "certificate": {
-            "public_key_algorithm": "id-ecPublicKey",
-            "key_size": 256,
-            "signature_algorithm": "sha256WithECDSAEncryption",
-            "issuer": "CN=R3, O=Let's Encrypt, C=US",
-            "expiry": "2025-12-31 00:00:00"
-        },
-        "quantum_risk": {
-            "risk_score": 7,
-            "findings": [
-                {
-                    "category": "Key Exchange",
-                    "finding": "X25519 is vulnerable to Shor's Algorithm",
-                    "severity": "CRITICAL",
-                    "remediation": "Migrate key exchange to a post-quantum algorithm. NIST-recommended options: CRYSTALS-Kyber (ML-KEM, FIPS 203) for key encapsulation, or hybrid X25519+Kyber schemes supported in OpenSSL 3.x / BoringSSL. Prioritise this — key exchange is exposed to 'harvest now, decrypt later' attacks."
-                },
-                {
-                    "category": "TLS Signature",
-                    "finding": "ECDSA signature is vulnerable to Shor's Algorithm",
-                    "severity": "HIGH",
-                    "remediation": "Replace TLS handshake signature with a post-quantum algorithm. NIST-standardised: CRYSTALS-Dilithium (ML-DSA, FIPS 204) or FALCON (FN-DSA, FIPS 206). Ensure your TLS library (OpenSSL 3.3+, liboqs) supports the chosen scheme."
-                },
-                {
-                    "category": "Certificate Public Key",
-                    "finding": "id-ecPublicKey public key is vulnerable to Shor's Algorithm",
-                    "severity": "HIGH",
-                    "remediation": "Reissue the certificate with a post-quantum public key algorithm. Use ML-DSA (Dilithium) or SLH-DSA (SPHINCS+, FIPS 205) for the certificate signature. Co-ordinate with your CA — most major CAs are rolling out PQC certificate support in 2024-2025."
-                },
-                {
-                    "category": "Hash Function",
-                    "finding": "SHA256 has reduced strength under Grover's Algorithm",
-                    "severity": "MEDIUM",
-                    "remediation": "Upgrade the hash function to SHA-384 or SHA-512. SHA-256 has its effective security halved by Grover's algorithm (128-bit post-quantum). SHA-384 / SHA-512 retain acceptable post-quantum security margins."
-                },
-                {
-                    "category": "Cipher Suite",
-                    "finding": "TLS_AES_256_GCM_SHA384 cipher is Grover-resistant (AES-256)",
-                    "severity": "INFO",
-                    "remediation": "AES-256 cipher is acceptable. Grover's algorithm reduces effective key length to 128 bits, which remains within acceptable security margins for the foreseeable future. No action required."
-                }
-            ]
-        }
-    }
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Page Config (must be first Streamlit call) ───────────────────────────────
+
 favicon = Image.open("favicon.png")
 
 st.set_page_config(
-    page_title="CypherQube",
-    page_icon=favicon,        
+    page_title="CypherQube — TLS Scanner",
+    page_icon=favicon,
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# ─── Global CSS ───────────────────────────────────────────────────────────────
 
 st.markdown("""
 <style>
@@ -165,6 +115,21 @@ html, body, [class*="css"] {
     letter-spacing:0.2em !important; text-transform:uppercase !important; color:var(--text-3) !important;
 }
 
+/* Textarea */
+.stTextArea textarea {
+    background:var(--bg2) !important; border:1px solid var(--border) !important;
+    border-radius:2px !important; color:var(--text-1) !important;
+    font-family:var(--font-mono) !important; font-size:0.83rem !important;
+    transition:border-color 0.15s !important; line-height:1.6 !important;
+}
+.stTextArea textarea:focus {
+    border-color:var(--border-hi) !important; box-shadow:none !important;
+}
+.stTextArea label {
+    font-family:var(--font-mono) !important; font-size:0.6rem !important;
+    letter-spacing:0.2em !important; text-transform:uppercase !important; color:var(--text-3) !important;
+}
+
 /* Button */
 .stButton > button {
     background:var(--bg3) !important; border:1px solid var(--border-hi) !important;
@@ -240,9 +205,6 @@ html, body, [class*="css"] {
 }
 .stDownloadButton > button:hover { border-color:var(--border-hi) !important; color:var(--text-1) !important; }
 
-/* File uploader */
-[data-testid="stFileUploader"] { background:var(--bg1) !important; border:1px dashed var(--border) !important; border-radius:2px !important; }
-
 /* JSON */
 .stJson > div { background:var(--bg2) !important; border:1px solid var(--border) !important; border-radius:2px !important; font-family:var(--font-mono) !important; font-size:0.76rem !important; }
 
@@ -266,7 +228,7 @@ hr { border:none !important; border-top:1px solid var(--border) !important; marg
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def normalize_target(t):
-    return t.replace("https://","").replace("http://","").split("/")[0].strip()
+    return t.replace("https://", "").replace("http://", "").split("/")[0].strip()
 
 def risk_meta(score):
     if score >= 7:   return "CRITICAL", "high",   "val-red"
@@ -294,13 +256,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ─── Scan Input ───────────────────────────────────────────────────────────────
+# ─── Single Scan Input ────────────────────────────────────────────────────────
 
 st.markdown('<div class="cq-section"><div class="cq-section-title">Target</div><div class="cq-section-line"></div></div>', unsafe_allow_html=True)
 
 c1, c2, c3 = st.columns([4, 1, 1])
 with c1:
-    target = st.text_input("DOMAIN", placeholder="e.g. github.com")
+    raw_target = st.text_input("DOMAIN", placeholder="e.g. github.com")
 with c2:
     port = st.number_input("PORT", min_value=1, max_value=65535, value=443)
 with c3:
@@ -308,13 +270,18 @@ with c3:
     scan_button = st.button("Run Scan", use_container_width=True)
 
 
-# ─── Results ──────────────────────────────────────────────────────────────────
+# ─── Single Scan Results ──────────────────────────────────────────────────────
 
 if scan_button:
-    if not target:
+    if not raw_target:
         st.error("Enter a target domain to continue.")
     else:
-        target = normalize_target(target)
+        # Warn if plain http — no TLS expected
+        if raw_target.startswith("http://") and not raw_target.startswith("https://"):
+            st.warning(f"⚠ Input uses http:// — scanning port {port} for TLS anyway. Plain HTTP sites have no TLS and the scan will fail.")
+
+        target = normalize_target(raw_target)
+
         with st.spinner(f"Scanning {target}:{port}..."):
             report = analyze_target(target, port)
 
@@ -366,11 +333,10 @@ if scan_button:
             </div>
             """, unsafe_allow_html=True)
 
-            # Two columns
+            # Two columns: findings + cert
             left, right = st.columns([5, 4])
 
             with left:
-                # ── Findings + Remediation ────────────────────────────────
                 st.markdown(f"""
                 <div class="cq-card">
                     <div class="cq-card-header">
@@ -415,7 +381,6 @@ if scan_button:
                 st.markdown('</div>', unsafe_allow_html=True)
 
             with right:
-                # ── Certificate Details ───────────────────────────────────
                 pub_alg  = cert.get("public_key_algorithm", "—")
                 key_size = cert.get("key_size", "—")
                 sig_alg  = cert.get("signature_algorithm", "—")
@@ -435,7 +400,7 @@ if scan_button:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # ── Export buttons ────────────────────────────────────────────
+            # Export buttons
             st.markdown('<div class="cq-section" style="margin-top:0.5rem;"><div class="cq-section-title">Export</div><div class="cq-section-line"></div></div>', unsafe_allow_html=True)
 
             col_json, col_pdf, _ = st.columns([1, 1, 4])
@@ -459,50 +424,220 @@ if scan_button:
                     use_container_width=True
                 )
 
-            # ── Raw inventory ──────────────────────────────────────────────
             with st.expander("Raw Crypto Inventory (JSON)"):
                 st.json(report)
 
 
 # ─── Bulk Scanner ─────────────────────────────────────────────────────────────
 
+MAX_BULK = 5
+
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown('<div class="cq-section"><div class="cq-section-title">Bulk Scan</div><div class="cq-section-line"></div></div>', unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("Upload targets.txt — one domain per line", type=["txt"])
+# Info banner
+st.markdown(f"""
+<div style="
+    background:var(--bg1);
+    border:1px solid var(--border);
+    border-left:3px solid var(--blue);
+    padding:0.75rem 1.1rem;
+    margin-bottom:1rem;
+    font-family:var(--font-mono);
+    font-size:0.72rem;
+    color:var(--text-2);
+    letter-spacing:0.04em;
+">
+    <span style="color:var(--blue);font-weight:600;">BULK MODE</span>
+    &nbsp;—&nbsp;
+    Paste up to <strong style="color:var(--text-1);">{MAX_BULK} URLs</strong>, one per line.
+    If more than {MAX_BULK} are provided, only the first {MAX_BULK} will be scanned.
+    Accepts plain domains, <code>http://</code> or <code>https://</code> prefixes.
+</div>
+""", unsafe_allow_html=True)
 
-if uploaded_file:
-    domains = [d.strip() for d in uploaded_file.read().decode().splitlines() if d.strip()]
-    results = []
-    progress = st.progress(0)
+# Paste zone
+bulk_input = st.text_area(
+    "TARGETS  —  one URL / domain per line",
+    placeholder="github.com\nhttps://cloudflare.com\nbank.example.com\ngoogle.com\nexample.org",
+    height=160,
+    key="bulk_textarea"
+)
 
-    for i, d in enumerate(domains):
-        r = analyze_target(normalize_target(d), 443)
-        if r:
-            results.append(r)
-        progress.progress((i + 1) / len(domains))
+# Scan button
+bcol1, _ = st.columns([1, 6])
+with bcol1:
+    bulk_run = st.button("⬡ RUN BULK SCAN", use_container_width=True, key="bulk_run_btn")
 
-    st.markdown(f'<div class="cq-section" style="margin-top:1rem;"><div class="cq-section-title">{len(results)} Targets Scanned</div><div class="cq-section-line"></div></div>', unsafe_allow_html=True)
+# Processing
+if bulk_run:
+    raw_lines = [l.strip() for l in bulk_input.splitlines() if l.strip() and not l.strip().startswith("#")]
 
-    table = []
-    for r in results:
-        s = r["quantum_risk"]["risk_score"]
-        lbl, _, _ = risk_meta(s)
-        table.append({
-            "Target":       r["target"],
-            "TLS":          r["tls_version"],
-            "Cipher":       r["cipher_suite"],
-            "Key Exchange": r["key_exchange"],
-            "Risk Score":   s,
-            "Risk Level":   lbl,
-        })
+    if not raw_lines:
+        st.error("⚠ No targets entered. Paste at least one URL or domain above.")
+    else:
+        total_provided = len(raw_lines)
+        targets        = raw_lines[:MAX_BULK]
+        trimmed        = total_provided - len(targets)
 
-    st.dataframe(pd.DataFrame(table), use_container_width=True)
+        # Trim notice
+        if trimmed > 0:
+            st.markdown(f"""
+            <div style="
+                background:var(--amber-dim);
+                border:1px solid var(--amber-border);
+                padding:0.65rem 1.1rem;
+                margin-bottom:1rem;
+                font-family:var(--font-mono);
+                font-size:0.72rem;
+                color:var(--amber);
+                letter-spacing:0.04em;
+            ">
+                ⚠ &nbsp;<strong>{total_provided} URLs provided</strong> — limit is {MAX_BULK}.
+                Scanning first {MAX_BULK} only.
+                <span style="color:var(--text-3);">
+                    Ignored: {", ".join(raw_lines[MAX_BULK:])}
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
 
-    bcol1, bcol2, _ = st.columns([1, 1, 4])
-    with bcol1:
-        st.download_button("↓ Bulk JSON", json.dumps(results, indent=4),
-                           "cypherqube_bulk.json", "application/json", use_container_width=True)
+        # Queue display
+        queue_html = "".join([
+            f'<div style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-2);'
+            f'padding:0.3rem 0;border-bottom:1px solid var(--border);">'
+            f'<span style="color:var(--text-3);margin-right:12px;">{i+1:02d}</span>{t}'
+            f'</div>'
+            for i, t in enumerate(targets)
+        ])
+        st.markdown(f"""
+        <div style="background:var(--bg1);border:1px solid var(--border);
+                    padding:0.8rem 1.1rem;margin-bottom:1rem;">
+            <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.25em;
+                        text-transform:uppercase;color:var(--text-3);margin-bottom:0.6rem;">
+                Scan Queue — {len(targets)} target(s)
+            </div>
+            {queue_html}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Scan loop
+        results  = []
+        errors   = []
+        progress = st.progress(0)
+        status   = st.empty()
+
+        for i, raw in enumerate(targets):
+            domain = normalize_target(raw)
+            status.markdown(
+                f'<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-3);">'
+                f'Scanning <span style="color:var(--text-1);">{domain}</span>'
+                f'&nbsp;[{i+1}/{len(targets)}]</div>',
+                unsafe_allow_html=True
+            )
+            try:
+                r = analyze_target(domain, 443)
+                if r:
+                    results.append(r)
+            except Exception as e:
+                errors.append({"target": domain, "error": str(e)})
+
+            progress.progress((i + 1) / len(targets))
+
+        status.empty()
+        progress.empty()
+
+        # Results header
+        ok_count  = len(results)
+        err_count = len(errors)
+
+        st.markdown(
+            f'<div class="cq-section" style="margin-top:1rem;">'
+            f'<div class="cq-section-title">Bulk Results — {ok_count} scanned'
+            f'{f", {err_count} failed" if err_count else ""}'
+            f'</div><div class="cq-section-line"></div></div>',
+            unsafe_allow_html=True
+        )
+
+        # Error rows
+        if errors:
+            for e in errors:
+                st.markdown(f"""
+                <div style="background:var(--red-dim);border:1px solid var(--red-border);
+                            padding:0.55rem 1rem;margin-bottom:0.4rem;
+                            font-family:var(--font-mono);font-size:0.75rem;color:var(--red);">
+                    ✗ &nbsp;<strong>{e['target']}</strong>
+                    <span style="color:var(--text-3);margin-left:12px;">{e['error']}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Results table + score cards
+        if results:
+            table = []
+            for r in results:
+                s = r["quantum_risk"]["risk_score"]
+                lbl, _, _ = risk_meta(s)
+                table.append({
+                    "Target":       r["target"],
+                    "TLS":          r.get("tls_version", "—"),
+                    "Cipher":       r.get("cipher_suite", "—"),
+                    "Key Exchange": r.get("key_exchange", "—"),
+                    "Risk Score":   s,
+                    "Risk Level":   lbl,
+                })
+
+            st.dataframe(pd.DataFrame(table), use_container_width=True)
+
+            # Per-target mini score cards
+            st.markdown(
+                '<div class="cq-section" style="margin-top:1rem;">'
+                '<div class="cq-section-title">Per-Target Risk</div>'
+                '<div class="cq-section-line"></div></div>',
+                unsafe_allow_html=True
+            )
+
+            cols = st.columns(min(len(results), 5))
+            for idx, r in enumerate(results):
+                s = r["quantum_risk"]["risk_score"]
+                lbl, css, _ = risk_meta(s)
+                findings_count = len(r["quantum_risk"].get("findings", []))
+                color = "var(--red)" if css == "high" else "var(--amber)" if css == "medium" else "var(--green)"
+                with cols[idx]:
+                    st.markdown(f"""
+                    <div style="background:var(--bg1);border:1px solid var(--border);
+                                border-top:2px solid {color};
+                                padding:0.9rem 1rem;text-align:center;">
+                        <div style="font-family:var(--font-mono);font-size:0.58rem;
+                                    letter-spacing:0.2em;color:var(--text-3);
+                                    margin-bottom:0.4rem;text-transform:uppercase;
+                                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            {r["target"].split(":")[0]}
+                        </div>
+                        <div style="font-family:var(--font-cond);font-size:1.6rem;font-weight:700;color:{color};">
+                            {s}<span style="font-size:0.8rem;color:var(--text-3)">/10</span>
+                        </div>
+                        <div style="font-family:var(--font-mono);font-size:0.6rem;
+                                    color:var(--text-3);margin-top:0.3rem;">
+                            {lbl} · {findings_count} finding(s)
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # Export
+            st.markdown(
+                '<div class="cq-section" style="margin-top:1rem;">'
+                '<div class="cq-section-title">Export</div>'
+                '<div class="cq-section-line"></div></div>',
+                unsafe_allow_html=True
+            )
+            ecol1, _ = st.columns([1, 5])
+            with ecol1:
+                st.download_button(
+                    "↓ Bulk JSON",
+                    data=json.dumps(results, indent=4),
+                    file_name="cypherqube_bulk.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
 
 
 # ─── Footer ───────────────────────────────────────────────────────────────────
