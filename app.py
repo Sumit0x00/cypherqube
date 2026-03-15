@@ -2,9 +2,8 @@ import streamlit as st
 import json
 import pandas as pd
 from pdf_report import generate_pdf_report
-# from scanner import analyze_target  # Uncomment when scanner module is available
 
-# ─── Mock scanner ─────────────────────────────────────────────────────────────
+# ─── Mock Scanner (real scanner ke ready hone tak) ────────────────────────────
 def analyze_target(target, port):
     return {
         "target": f"{target}:{port}",
@@ -28,39 +27,41 @@ def analyze_target(target, port):
                     "category": "Key Exchange",
                     "finding": "X25519 is vulnerable to Shor's Algorithm",
                     "severity": "CRITICAL",
-                    "remediation": "Migrate key exchange to a post-quantum algorithm. NIST-recommended options: CRYSTALS-Kyber (ML-KEM, FIPS 203) for key encapsulation, or hybrid X25519+Kyber schemes supported in OpenSSL 3.x / BoringSSL. Prioritise this — key exchange is exposed to 'harvest now, decrypt later' attacks."
+                    "remediation": "Migrate key exchange to a post-quantum algorithm. NIST-recommended options: CRYSTALS-Kyber (ML-KEM, FIPS 203) for key encapsulation, or hybrid X25519+Kyber schemes supported in OpenSSL 3.x / BoringSSL."
                 },
                 {
                     "category": "TLS Signature",
                     "finding": "ECDSA signature is vulnerable to Shor's Algorithm",
                     "severity": "HIGH",
-                    "remediation": "Replace TLS handshake signature with a post-quantum algorithm. NIST-standardised: CRYSTALS-Dilithium (ML-DSA, FIPS 204) or FALCON (FN-DSA, FIPS 206). Ensure your TLS library (OpenSSL 3.3+, liboqs) supports the chosen scheme."
+                    "remediation": "Replace TLS handshake signature with a post-quantum algorithm. NIST-standardised: CRYSTALS-Dilithium (ML-DSA, FIPS 204) or FALCON (FN-DSA, FIPS 206)."
                 },
                 {
                     "category": "Certificate Public Key",
                     "finding": "id-ecPublicKey public key is vulnerable to Shor's Algorithm",
                     "severity": "HIGH",
-                    "remediation": "Reissue the certificate with a post-quantum public key algorithm. Use ML-DSA (Dilithium) or SLH-DSA (SPHINCS+, FIPS 205) for the certificate signature. Co-ordinate with your CA — most major CAs are rolling out PQC certificate support in 2024-2025."
+                    "remediation": "Reissue the certificate with a post-quantum public key algorithm. Use ML-DSA (Dilithium) or SLH-DSA (SPHINCS+, FIPS 205)."
                 },
                 {
                     "category": "Hash Function",
                     "finding": "SHA256 has reduced strength under Grover's Algorithm",
                     "severity": "MEDIUM",
-                    "remediation": "Upgrade the hash function to SHA-384 or SHA-512. SHA-256 has its effective security halved by Grover's algorithm (128-bit post-quantum). SHA-384 / SHA-512 retain acceptable post-quantum security margins."
+                    "remediation": "Upgrade the hash function to SHA-384 or SHA-512. SHA-256 effective security is halved by Grover's algorithm."
                 },
                 {
                     "category": "Cipher Suite",
                     "finding": "TLS_AES_256_GCM_SHA384 cipher is Grover-resistant (AES-256)",
                     "severity": "INFO",
-                    "remediation": "AES-256 cipher is acceptable. Grover's algorithm reduces effective key length to 128 bits, which remains within acceptable security margins for the foreseeable future. No action required."
+                    "remediation": "AES-256 cipher is acceptable. No action required."
                 }
             ]
         }
     }
-# ──────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── Page Config ──────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="CypherQube — Post-Quantum Risk Assessment",
+    page_title="CypherQube — TLS Scanner",
     page_icon="🔒",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -249,7 +250,6 @@ html, body, [class*="css"] {
     background: linear-gradient(180deg, #1a56db, #0a2352);
     border-radius: 8px 0 0 8px;
 }
-.cq-hero-text {}
 .cq-hero-badge {
     display: inline-flex;
     align-items: center;
@@ -438,6 +438,29 @@ html, body, [class*="css"] {
     letter-spacing: 0.01em !important;
 }
 
+/* ── TEXTAREA ── */
+.stTextArea textarea {
+    background: #fafbfc !important;
+    border: 1px solid #cdd5df !important;
+    border-radius: 5px !important;
+    color: #1a2332 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 0.88rem !important;
+    transition: all 0.15s !important;
+}
+.stTextArea textarea:focus {
+    border-color: #1a56db !important;
+    box-shadow: 0 0 0 3px rgba(26,86,219,0.1) !important;
+    outline: none !important;
+    background: #ffffff !important;
+}
+.stTextArea label {
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: #374151 !important;
+}
+
 /* ── PRIMARY BUTTON ── */
 .stButton > button {
     background: #1a56db !important;
@@ -519,7 +542,7 @@ html, body, [class*="css"] {
 }
 .score-critical { color: #c81e1e !important; }
 .score-medium   { color: #b45309 !important; }
-.score-safe     { color: #166534 !important; }
+.score-safe     { color: #166634 !important; }
 
 /* ── ALERT BANNER ── */
 .cq-alert {
@@ -536,9 +559,8 @@ html, body, [class*="css"] {
 }
 .cq-alert.critical { border-color: #f87171; border-left-color: #c81e1e; background: #fff5f5; }
 .cq-alert.medium   { border-color: #fbbf24; border-left-color: #b45309; background: #fffbeb; }
-.cq-alert.safe     { border-color: #6ee7b7; border-left-color: #166534; background: #f0fdf4; }
+.cq-alert.safe     { border-color: #6ee7b7; border-left-color: #166634; background: #f0fdf4; }
 .cq-alert-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
-.cq-alert-content {}
 .cq-alert-title {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.82rem;
@@ -556,7 +578,7 @@ html, body, [class*="css"] {
 }
 .critical .cq-alert-desc { color: #991b1b; }
 .medium   .cq-alert-desc { color: #92400e; }
-.safe     .cq-alert-desc { color: #166534; }
+.safe     .cq-alert-desc { color: #166634; }
 
 /* ── FINDINGS PANEL ── */
 .cq-findings-panel {
@@ -593,17 +615,18 @@ html, body, [class*="css"] {
     border-radius: 12px;
     padding: 2px 10px;
 }
+
+/* ── FINDING ROW ── */
 .cq-finding-row {
     border-bottom: 1px solid #f0f3f8;
-    transition: background 0.1s;
+    background: #ffffff;
 }
 .cq-finding-row:last-child { border-bottom: none; }
-.cq-finding-row:hover { background: #fafbfd; }
 .cq-finding-top {
     display: flex;
     align-items: flex-start;
     gap: 14px;
-    padding: 1.1rem 1.4rem 0.9rem;
+    padding: 1rem 1.4rem 0.85rem;
 }
 .cq-sev-badge {
     font-family: Arial, Helvetica, sans-serif;
@@ -613,53 +636,54 @@ html, body, [class*="css"] {
     padding: 4px 10px;
     border-radius: 4px;
     flex-shrink: 0;
-    margin-top: 1px;
+    margin-top: 2px;
     text-transform: uppercase;
-    min-width: 76px;
+    min-width: 72px;
     text-align: center;
     border: 1px solid;
+    display: inline-block;
 }
 .sev-CRITICAL { color: #7f1d1d; background: #fef2f2; border-color: #fca5a5; }
 .sev-HIGH     { color: #78350f; background: #fffbeb; border-color: #fcd34d; }
 .sev-MEDIUM   { color: #713f12; background: #fefce8; border-color: #fde68a; }
 .sev-INFO     { color: #1e40af; background: #eff6ff; border-color: #93c5fd; }
 .sev-LOW      { color: #14532d; background: #f0fdf4; border-color: #86efac; }
-
-.cq-finding-body { flex: 1; }
+.cq-finding-body { flex: 1; min-width: 0; }
 .cq-finding-cat {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.88rem;
     font-weight: 700;
     color: #0a2352;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 .cq-finding-desc {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.82rem;
     color: #4a5568;
-    line-height: 1.55;
+    line-height: 1.5;
     font-weight: 400;
 }
 .cq-remediation {
     background: #f8faff;
     border-top: 1px solid #e8edf6;
     border-left: 3px solid #1a56db;
-    padding: 0.85rem 1.4rem 0.85rem 3.6rem;
+    padding: 0.75rem 1.4rem 0.75rem 1.6rem;
+    margin-left: 0;
 }
 .cq-rem-title {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: #1a56db;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 }
 .cq-rem-body {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.81rem;
     color: #374151;
-    line-height: 1.65;
+    line-height: 1.6;
     font-weight: 400;
 }
 
@@ -697,10 +721,7 @@ html, body, [class*="css"] {
     font-size: 12px;
 }
 .cq-kv-table { width: 100%; border-collapse: collapse; }
-.cq-kv-row {
-    border-bottom: 1px solid #f0f3f8;
-    transition: background 0.1s;
-}
+.cq-kv-row { border-bottom: 1px solid #f0f3f8; transition: background 0.1s; }
 .cq-kv-row:last-child { border-bottom: none; }
 .cq-kv-row:hover { background: #fafbfd; }
 .cq-kv-table td { padding: 0.7rem 1.4rem; vertical-align: top; }
@@ -741,10 +762,7 @@ html, body, [class*="css"] {
     align-items: center;
     gap: 7px;
 }
-.cq-info-box-title::before {
-    content: 'ℹ';
-    font-size: 0.9rem;
-}
+.cq-info-box-title::before { content: 'ℹ'; font-size: 0.9rem; }
 .cq-info-row {
     display: flex;
     justify-content: space-between;
@@ -775,17 +793,6 @@ html, body, [class*="css"] {
     border-color: #1a56db !important;
     color: #1a56db !important;
     box-shadow: 0 1px 4px rgba(26,86,219,0.15) !important;
-}
-
-/* ── FILE UPLOADER ── */
-[data-testid="stFileUploader"] {
-    background: #ffffff !important;
-    border: 1px dashed #c0c9d8 !important;
-    border-radius: 7px !important;
-}
-[data-testid="stFileUploader"]:hover {
-    border-color: #1a56db !important;
-    background: #f8faff !important;
 }
 
 /* ── JSON ── */
@@ -821,25 +828,37 @@ html, body, [class*="css"] {
 .stDataFrame tr:hover td { background: #f8fafd !important; }
 
 /* ── PROGRESS ── */
-.stProgress > div > div {
-    background: #e5e9f0 !important;
-    border-radius: 4px !important;
-    height: 5px !important;
-}
-.stProgress > div > div > div {
-    background: linear-gradient(90deg, #1a56db, #3b82f6) !important;
-    border-radius: 4px !important;
-}
+.stProgress > div > div { background: #e5e9f0 !important; border-radius: 4px !important; height: 5px !important; }
+.stProgress > div > div > div { background: linear-gradient(90deg, #1a56db, #3b82f6) !important; border-radius: 4px !important; }
 
-/* ── EXPANDER ── */
-.streamlit-expanderHeader {
+/* ── EXPANDER — properly visible, light theme ── */
+[data-testid="stExpander"] {
     background: #ffffff !important;
     border: 1px solid #dde2ea !important;
-    border-radius: 6px !important;
-    color: #374151 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    margin-top: 1rem !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05) !important;
+}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] > div:first-child {
+    background: #f8fafc !important;
+    color: #0a2352 !important;
     font-family: Arial, Helvetica, sans-serif !important;
     font-size: 0.8rem !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
+}
+[data-testid="stExpander"] > div:last-child {
+    background: #fafbfc !important;
+}
+.streamlit-expanderHeader {
+    background: #f8fafc !important;
+    border: 1px solid #dde2ea !important;
+    border-radius: 6px !important;
+    color: #0a2352 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
 }
 .streamlit-expanderContent {
     border: 1px solid #dde2ea !important;
@@ -868,6 +887,35 @@ hr { border: none !important; border-top: 1px solid #dde2ea !important; margin: 
 /* ── SELECTION ── */
 ::selection { background: rgba(26,86,219,0.12); color: #0a2352; }
 
+/* ── BATCH COMPLETE — white card (not black) ── */
+.cq-batch-complete {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 1.5rem 0 1.2rem;
+    background: #ffffff;
+    border: 1px solid #dde2ea;
+    border-left: 4px solid #166634;
+    border-radius: 8px;
+    padding: 0.9rem 1.4rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.cq-batch-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #dcfce7; border: 1px solid #86efac;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; color: #166634; flex-shrink: 0; font-weight: 700;
+}
+.cq-batch-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.78rem; font-weight: 700;
+    color: #0a2352; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.cq-batch-sub {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.7rem; color: #6b7a8d; margin-left: auto;
+}
+
 /* ── FOOTER ── */
 .cq-footer {
     background: #0a2352;
@@ -877,7 +925,7 @@ hr { border: none !important; border-top: 1px solid #dde2ea !important; margin: 
 }
 .cq-footer-top {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr;
     gap: 2.5rem;
     padding-bottom: 2rem;
     border-bottom: 1px solid rgba(255,255,255,0.1);
@@ -923,13 +971,18 @@ hr { border: none !important; border-top: 1px solid #dde2ea !important; margin: 
     color: rgba(255,255,255,0.4);
     margin-bottom: 12px;
 }
-.cq-footer-col-item {
+.cq-footer-link {
+    display: block;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.78rem;
     color: rgba(255,255,255,0.6);
     margin-bottom: 7px;
     line-height: 1.4;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s;
 }
+.cq-footer-link:hover { color: #7ab3ff !important; text-decoration: none; }
 .cq-footer-bottom {
     display: flex;
     justify-content: space-between;
@@ -942,21 +995,17 @@ hr { border: none !important; border-top: 1px solid #dde2ea !important; margin: 
     font-size: 0.7rem;
     color: rgba(255,255,255,0.35);
 }
-.cq-footer-bottom-links {
-    display: flex;
-    gap: 20px;
-}
+.cq-footer-bottom-links { display: flex; gap: 20px; }
 .cq-footer-bottom-link {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.7rem;
-    color: rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    transition: color 0.15s;
+    cursor: pointer;
 }
-.cq-footer-cert-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-}
+.cq-footer-bottom-link:hover { color: #7ab3ff !important; text-decoration: none; }
+.cq-footer-cert-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .cq-footer-cert {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 0.58rem;
@@ -975,12 +1024,53 @@ hr { border: none !important; border-top: 1px solid #dde2ea !important; margin: 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def normalize_target(t):
-    return t.replace("https://","").replace("http://","").split("/")[0].strip()
+    return t.replace("https://", "").replace("http://", "").split("/")[0].strip()
 
 def risk_meta(score):
-    if score >= 7:   return "Critical Risk",  "critical", "score-critical"
-    elif score >= 4: return "Moderate Risk",  "medium",   "score-medium"
-    else:            return "Low Risk",        "safe",     "score-safe"
+    if score >= 7:   return "Critical Risk", "critical", "score-critical"
+    elif score >= 4: return "Moderate Risk", "medium",   "score-medium"
+    else:            return "Low Risk",       "safe",     "score-safe"
+
+def build_finding_html(findings):
+    """
+    Saare findings ek single HTML string mein build karta hai.
+    Yeh Streamlit ke wrapper div problem ko bypass karta hai.
+    """
+    if not findings:
+        return """
+        <div class="cq-finding-row">
+            <div class="cq-finding-top">
+                <span class="cq-sev-badge sev-LOW">PASS</span>
+                <div class="cq-finding-body">
+                    <div class="cq-finding-cat">All checks passed</div>
+                    <div class="cq-finding-desc">No post-quantum vulnerabilities detected.</div>
+                </div>
+            </div>
+        </div>
+        """
+
+    html = ""
+    for f in findings:
+        sev      = f.get("severity", "INFO")
+        category = f.get("category", "")
+        finding  = f.get("finding", "")
+        rem      = f.get("remediation", "")
+        html += f"""
+        <div class="cq-finding-row">
+            <div class="cq-finding-top">
+                <span class="cq-sev-badge sev-{sev}">{sev}</span>
+                <div class="cq-finding-body">
+                    <div class="cq-finding-cat">{category}</div>
+                    <div class="cq-finding-desc">{finding}</div>
+                </div>
+            </div>
+            <div class="cq-remediation">
+                <div class="cq-rem-title">Recommended Remediation</div>
+                <div class="cq-rem-body">{rem}</div>
+            </div>
+        </div>
+        """
+    return html
 
 
 # ─── Top Header ───────────────────────────────────────────────────────────────
@@ -1016,7 +1106,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ─── Secondary nav strip ──────────────────────────────────────────────────────
+# ─── Secondary Nav Strip ──────────────────────────────────────────────────────
 
 st.markdown("""
 <div class="cq-nav-strip">
@@ -1088,7 +1178,7 @@ st.markdown("""
 
 c1, c2, c3 = st.columns([5, 1, 1])
 with c1:
-    target = st.text_input(
+    raw_target = st.text_input(
         "Host / IP Address",
         placeholder="e.g.  api.yourbank.com   ·   192.168.1.100   ·   secure.internal"
     )
@@ -1101,13 +1191,17 @@ with c3:
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ─── Results ──────────────────────────────────────────────────────────────────
+# ─── Single Scan Results ──────────────────────────────────────────────────────
 
 if scan_button:
-    if not target:
+    if not raw_target:
         st.error("Please specify a target host to continue.")
     else:
-        target = normalize_target(target)
+        if raw_target.startswith("http://") and not raw_target.startswith("https://"):
+            st.warning(f"⚠ Input uses http:// — scanning port {port} for TLS anyway. Plain HTTP sites have no TLS and the scan may fail.")
+
+        target = normalize_target(raw_target)
+
         with st.spinner(f"Analysing {target}:{port} — please wait..."):
             report = analyze_target(target, port)
 
@@ -1131,7 +1225,7 @@ if scan_button:
             </div>
             """, unsafe_allow_html=True)
 
-            # Metrics
+            # ── Metrics ──
             st.markdown(f"""
             <div class="cq-metrics-row">
                 <div class="cq-metric-card">
@@ -1157,12 +1251,12 @@ if scan_button:
             </div>
             """, unsafe_allow_html=True)
 
-            # Alert banner
-            alert_icons   = {"critical": "⚠️", "medium": "⚡", "safe": "✅"}
-            alert_titles  = {
-                "critical": f"Critical — Post-Quantum Vulnerabilities Detected",
-                "medium":   f"Advisory — Moderate Quantum Exposure Identified",
-                "safe":     f"Compliant — No Significant Quantum Vulnerabilities Found",
+            # ── Alert banner ──
+            alert_icons  = {"critical": "⚠️", "medium": "⚡", "safe": "✅"}
+            alert_titles = {
+                "critical": "Critical — Post-Quantum Vulnerabilities Detected",
+                "medium":   "Advisory — Moderate Quantum Exposure Identified",
+                "safe":     "Compliant — No Significant Quantum Vulnerabilities Found",
             }
             alert_descs = {
                 "critical": f"The endpoint <strong>{target}:{port}</strong> uses cryptographic algorithms vulnerable to quantum attacks. Immediate migration to NIST PQC standards is strongly recommended to protect against 'harvest now, decrypt later' threats.",
@@ -1179,54 +1273,20 @@ if scan_button:
             </div>
             """, unsafe_allow_html=True)
 
-            # Two columns
+            # ── Two columns ──
             left, right = st.columns([6, 4])
 
             with left:
+                findings_html = build_finding_html(findings)
                 st.markdown(f"""
                 <div class="cq-findings-panel">
                     <div class="cq-findings-header">
                         <span class="cq-findings-title">Quantum Risk Findings</span>
                         <span class="cq-findings-badge">{len(findings)} finding{"s" if len(findings) != 1 else ""}</span>
                     </div>
+                    {findings_html}
+                </div>
                 """, unsafe_allow_html=True)
-
-                if findings:
-                    for f in findings:
-                        sev      = f.get("severity", "INFO")
-                        category = f.get("category", "")
-                        finding  = f.get("finding", "")
-                        rem      = f.get("remediation", "")
-
-                        st.markdown(f"""
-                        <div class="cq-finding-row">
-                            <div class="cq-finding-top">
-                                <span class="cq-sev-badge sev-{sev}">{sev}</span>
-                                <div class="cq-finding-body">
-                                    <div class="cq-finding-cat">{category}</div>
-                                    <div class="cq-finding-desc">{finding}</div>
-                                </div>
-                            </div>
-                            <div class="cq-remediation">
-                                <div class="cq-rem-title">Recommended Remediation</div>
-                                <div class="cq-rem-body">{rem}</div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div class="cq-finding-row">
-                        <div class="cq-finding-top">
-                            <span class="cq-sev-badge sev-LOW">PASS</span>
-                            <div class="cq-finding-body">
-                                <div class="cq-finding-cat">All checks passed</div>
-                                <div class="cq-finding-desc">No post-quantum vulnerabilities detected. Cryptographic configuration is compliant with current NIST PQC standards.</div>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                st.markdown('</div>', unsafe_allow_html=True)
 
             with right:
                 pub_alg  = cert.get("public_key_algorithm", "—")
@@ -1276,7 +1336,7 @@ if scan_button:
                     </div>
                     <div class="cq-info-row">
                         <span class="cq-info-row-label">Score 0–3</span>
-                        <span class="cq-info-row-val" style="color:#166534;">Low Risk</span>
+                        <span class="cq-info-row-val" style="color:#166634;">Low Risk</span>
                     </div>
                     <div class="cq-info-row">
                         <span class="cq-info-row-label">Shor's Algorithm</span>
@@ -1289,13 +1349,12 @@ if scan_button:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Export
+            # ── Export section ──
             st.markdown("""
             <div class="cq-section">
                 <div class="cq-section-num">3</div>
                 <div class="cq-section-label">Export Report</div>
                 <div class="cq-section-line"></div>
-                <div class="cq-section-tag">Download</div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -1318,11 +1377,14 @@ if scan_button:
                     use_container_width=True
                 )
 
-            with st.expander("Raw Cryptographic Inventory (JSON)"):
+            # FIX 1: Expander properly visible — emoji + styled
+            with st.expander("🔍  Raw Cryptographic Inventory (JSON)"):
                 st.json(report)
 
 
 # ─── Bulk Scanner ─────────────────────────────────────────────────────────────
+
+MAX_BULK = 5
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -1335,66 +1397,168 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-<div style="background:#ffffff;border:1px solid #dde2ea;border-radius:8px;padding:1.5rem 2rem;margin-bottom:1.2rem;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
-    <div style="font-family:Arial,sans-serif;font-size:0.75rem;font-weight:700;color:#0a2352;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
+st.markdown(f"""
+<div style="background:#ffffff;border:1px solid #dde2ea;border-radius:8px;
+            padding:1.5rem 2rem;margin-bottom:1.2rem;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+    <div style="font-family:Arial,sans-serif;font-size:0.75rem;font-weight:700;
+                color:#0a2352;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
         Batch Endpoint Scanner
     </div>
-    <div style="font-family:Arial,sans-serif;font-size:0.8rem;color:#6b7a8d;margin-bottom:1.2rem;">
-        Upload a plain text file with one hostname or IP address per line. All targets will be scanned on port 443.
+    <div style="font-family:Arial,sans-serif;font-size:0.8rem;color:#6b7a8d;margin-bottom:0.2rem;">
+        Paste up to <strong>{MAX_BULK} URLs</strong>, one per line.
+        Accepts plain domains, <code>http://</code> or <code>https://</code> prefixes.
+        If more than {MAX_BULK} are provided, only the first {MAX_BULK} will be scanned.
     </div>
+</div>
 """, unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader(
-    "Upload targets.txt — one domain or IP per line",
-    type=["txt"]
+bulk_input = st.text_area(
+    "Targets — one URL / domain per line",
+    placeholder="github.com\nhttps://cloudflare.com\nbank.example.com\ngoogle.com\nexample.org",
+    height=160,
+    key="bulk_textarea"
 )
 
-st.markdown('</div>', unsafe_allow_html=True)
+bcol1, _ = st.columns([1, 6])
+with bcol1:
+    bulk_run = st.button("Run Bulk Assessment", use_container_width=True, key="bulk_run_btn")
 
-if uploaded_file:
-    domains = [d.strip() for d in uploaded_file.read().decode().splitlines() if d.strip()]
-    results = []
-    progress = st.progress(0)
+if bulk_run:
+    raw_lines = [l.strip() for l in bulk_input.splitlines() if l.strip() and not l.strip().startswith("#")]
 
-    for i, d in enumerate(domains):
-        r = analyze_target(normalize_target(d), 443)
-        if r:
-            results.append(r)
-        progress.progress((i + 1) / len(domains))
+    if not raw_lines:
+        st.error("No targets entered. Paste at least one URL or domain above.")
+    else:
+        total_provided = len(raw_lines)
+        targets        = raw_lines[:MAX_BULK]
+        trimmed        = total_provided - len(targets)
 
-    st.markdown(f"""
-    <div class="cq-section">
-        <div class="cq-section-num">✓</div>
-        <div class="cq-section-label">Batch Complete — {len(results)} Targets Scanned</div>
-        <div class="cq-section-line"></div>
-    </div>
-    """, unsafe_allow_html=True)
+        if trimmed > 0:
+            st.warning(f"⚠ {total_provided} URLs provided — limit is {MAX_BULK}. Scanning first {MAX_BULK} only. Ignored: {', '.join(raw_lines[MAX_BULK:])}")
 
-    table = []
-    for r in results:
-        s = r["quantum_risk"]["risk_score"]
-        lbl, _, _ = risk_meta(s)
-        table.append({
-            "Target":       r["target"],
-            "TLS Version":  r["tls_version"],
-            "Cipher Suite": r["cipher_suite"],
-            "Key Exchange": r["key_exchange"],
-            "Risk Score":   s,
-            "Risk Level":   lbl,
-        })
+        results  = []
+        errors   = []
+        progress = st.progress(0)
+        status   = st.empty()
 
-    st.dataframe(pd.DataFrame(table), use_container_width=True)
+        for i, raw in enumerate(targets):
+            domain = normalize_target(raw)
+            status.markdown(
+                f'<div style="font-family:Arial,sans-serif;font-size:0.78rem;color:#6b7a8d;">'
+                f'Scanning <strong style="color:#0a2352;">{domain}</strong> [{i+1}/{len(targets)}]</div>',
+                unsafe_allow_html=True
+            )
+            try:
+                r = analyze_target(domain, 443)
+                if r:
+                    results.append(r)
+            except Exception as e:
+                errors.append({"target": domain, "error": str(e)})
 
-    bcol1, _ = st.columns([1, 6])
-    with bcol1:
-        st.download_button(
-            "⬇ Bulk JSON Report",
-            json.dumps(results, indent=4),
-            "cypherqube_bulk.json",
-            "application/json",
-            use_container_width=True
-        )
+            progress.progress((i + 1) / len(targets))
+
+        status.empty()
+        progress.empty()
+
+        ok_count  = len(results)
+        err_count = len(errors)
+
+        # FIX 2: Batch complete — white card, no nested f-string quotes
+        target_word = "targets" if ok_count != 1 else "target"
+        failed_html = f"&nbsp;·&nbsp; <span style=\"color:#c81e1e;font-weight:600;\">{err_count} failed</span>" if err_count else ""
+        processed_str = f"{len(targets)} of {total_provided} processed"
+        st.markdown(f"""
+        <div class="cq-batch-complete">
+            <div class="cq-batch-icon">✓</div>
+            <div>
+                <div class="cq-batch-text">Batch Complete</div>
+                <div style="font-family:Arial,sans-serif;font-size:0.7rem;color:#6b7a8d;margin-top:2px;">
+                    {ok_count} {target_word} scanned successfully {failed_html}
+                </div>
+            </div>
+            <div class="cq-batch-sub">{processed_str}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if errors:
+            for e in errors:
+                st.markdown(f"""
+                <div style="background:#fff5f5;border:1px solid #fca5a5;border-left:4px solid #c81e1e;
+                            padding:0.65rem 1rem;margin-bottom:0.4rem;border-radius:6px;
+                            font-family:Arial,sans-serif;font-size:0.78rem;color:#7f1d1d;">
+                    ✗ &nbsp;<strong>{e['target']}</strong>
+                    <span style="color:#9aa5b4;margin-left:12px;">{e['error']}</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        if results:
+            table = []
+            for r in results:
+                s = r["quantum_risk"]["risk_score"]
+                lbl, _, _ = risk_meta(s)
+                table.append({
+                    "Target":       r["target"],
+                    "TLS Version":  r["tls_version"],
+                    "Cipher Suite": r["cipher_suite"],
+                    "Key Exchange": r["key_exchange"],
+                    "Risk Score":   s,
+                    "Risk Level":   lbl,
+                })
+
+            st.dataframe(pd.DataFrame(table), use_container_width=True)
+
+            st.markdown("""
+            <div class="cq-section" style="margin-top:1.2rem;">
+                <div class="cq-section-num">↓</div>
+                <div class="cq-section-label">Per-Target Risk Summary</div>
+                <div class="cq-section-line"></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            cols = st.columns(min(len(results), 5))
+            color_map = {"critical": "#c81e1e", "medium": "#b45309", "safe": "#166634"}
+            for idx, r in enumerate(results):
+                s = r["quantum_risk"]["risk_score"]
+                lbl, css, _ = risk_meta(s)
+                findings_count = len(r["quantum_risk"].get("findings", []))
+                color = color_map[css]
+                with cols[idx]:
+                    st.markdown(f"""
+                    <div style="background:#ffffff;border:1px solid #dde2ea;
+                                border-top:3px solid {color};border-radius:8px;
+                                padding:1rem 1.2rem;text-align:center;
+                                box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+                        <div style="font-family:Arial,sans-serif;font-size:0.6rem;font-weight:700;
+                                    letter-spacing:0.1em;text-transform:uppercase;color:#6b7a8d;
+                                    margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            {r["target"].split(":")[0]}
+                        </div>
+                        <div style="font-family:Arial,sans-serif;font-size:2rem;font-weight:700;color:{color};line-height:1;">
+                            {s}<span style="font-size:0.85rem;color:#9aa5b4;font-weight:400">/10</span>
+                        </div>
+                        <div style="font-family:Arial,sans-serif;font-size:0.65rem;color:#9aa5b4;margin-top:5px;">
+                            {lbl} · {findings_count} finding(s)
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <div class="cq-section" style="margin-top:1.2rem;">
+                <div class="cq-section-num">5</div>
+                <div class="cq-section-label">Export Bulk Report</div>
+                <div class="cq-section-line"></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            ecol1, _ = st.columns([1, 6])
+            with ecol1:
+                st.download_button(
+                    "⬇ Bulk JSON Report",
+                    data=json.dumps(results, indent=4),
+                    file_name="cypherqube_bulk.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
 
 
 # ─── Footer ───────────────────────────────────────────────────────────────────
@@ -1422,28 +1586,20 @@ st.markdown("""
             </div>
         </div>
         <div>
-            <div class="cq-footer-col-title">Platform</div>
-            <div class="cq-footer-col-item">TLS Assessment</div>
-            <div class="cq-footer-col-item">Bulk Scanner</div>
-            <div class="cq-footer-col-item">PDF Report Export</div>
-            <div class="cq-footer-col-item">JSON Report Export</div>
-            <div class="cq-footer-col-item">CLI Interface</div>
-        </div>
-        <div>
             <div class="cq-footer-col-title">Threat Coverage</div>
-            <div class="cq-footer-col-item">Shor's Algorithm</div>
-            <div class="cq-footer-col-item">Grover's Algorithm</div>
-            <div class="cq-footer-col-item">Key Exchange Risk</div>
-            <div class="cq-footer-col-item">Certificate Analysis</div>
-            <div class="cq-footer-col-item">Cipher Suite Audit</div>
+            <a class="cq-footer-link" href="https://en.wikipedia.org/wiki/Shor%27s_algorithm" target="_blank">Shor's Algorithm</a>
+            <a class="cq-footer-link" href="https://en.wikipedia.org/wiki/Grover%27s_algorithm" target="_blank">Grover's Algorithm</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/projects/post-quantum-cryptography" target="_blank">Key Exchange Risk</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/projects/post-quantum-cryptography" target="_blank">Certificate Analysis</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/projects/post-quantum-cryptography" target="_blank">Cipher Suite Audit</a>
         </div>
         <div>
             <div class="cq-footer-col-title">NIST PQC Standards</div>
-            <div class="cq-footer-col-item">ML-KEM (CRYSTALS-Kyber)</div>
-            <div class="cq-footer-col-item">ML-DSA (CRYSTALS-Dilithium)</div>
-            <div class="cq-footer-col-item">SLH-DSA (SPHINCS+)</div>
-            <div class="cq-footer-col-item">FN-DSA (FALCON)</div>
-            <div class="cq-footer-col-item">Hybrid PQC Schemes</div>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/pubs/fips/203/final" target="_blank">ML-KEM (CRYSTALS-Kyber)</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/pubs/fips/204/final" target="_blank">ML-DSA (CRYSTALS-Dilithium)</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/pubs/fips/205/final" target="_blank">SLH-DSA (SPHINCS+)</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/pubs/fips/206/final" target="_blank">FN-DSA (FALCON)</a>
+            <a class="cq-footer-link" href="https://csrc.nist.gov/projects/post-quantum-cryptography" target="_blank">Hybrid PQC Schemes</a>
         </div>
     </div>
     <div class="cq-footer-bottom">
@@ -1452,10 +1608,10 @@ st.markdown("""
             Not a substitute for a formal cryptographic security audit.
         </div>
         <div class="cq-footer-bottom-links">
-            <span class="cq-footer-bottom-link">Documentation</span>
-            <span class="cq-footer-bottom-link">GitHub</span>
-            <span class="cq-footer-bottom-link">NIST PQC Project</span>
-            <span class="cq-footer-bottom-link">Report an Issue</span>
+            <a class="cq-footer-bottom-link" href="https://github.com/Sumit0x00/cypherqube#readme" target="_blank">Documentation</a>
+            <a class="cq-footer-bottom-link" href="https://github.com/Sumit0x00/cypherqube" target="_blank">GitHub</a>
+            <a class="cq-footer-bottom-link" href="https://csrc.nist.gov/projects/post-quantum-cryptography" target="_blank">NIST PQC Project</a>
+            <a class="cq-footer-bottom-link" href="https://github.com/Sumit0x00/cypherqube/issues/new?labels=bug&title=[Bug]%3A+" target="_blank">Report an Issue</a>
         </div>
     </div>
 </div>
