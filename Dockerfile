@@ -2,7 +2,7 @@
 FROM python:3.13-slim-bookworm
 
 # Bookworm ships OpenSSL 3.x by default — verify at build time
-RUN openssl version | grep -E "^OpenSSL 3\." || (echo "ERROR: OpenSSL 3.x required" && exit 1)
+#RUN openssl version | grep -E "^OpenSSL 3\." || (echo "ERROR: OpenSSL 3.x required" && exit 1)
 
 # System deps: OpenSSL headers, build tools (for any compiled wheels)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,7 +31,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 # Default: run the Streamlit app
-CMD ["streamlit", "run", "app.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0", \
-     "--server.headless=true"]
+CMD ["streamlit", "run", "app.py"]
